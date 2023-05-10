@@ -24,12 +24,12 @@ public class WorkerService {
 
     @Async
     public void crackHashTask(CrackHashManagerRequest body) {
-        String ALPHABET = String.join("", body.getAlphabet().getSymbols());
-        int ALPHABET_SIZE = ALPHABET.length();
-        int POSITIONS_NUM = body.getMaxLength();
-        int ALL_PARTS_NUM = body.getPartCount();
-        int MY_PART_IDX = body.getPartNumber();
-        byte[] HASH = DatatypeConverter.parseHexBinary(body.getHash());
+        String alphabet = String.join("", body.getAlphabet().getSymbols());
+        int alphabetSize = alphabet.length();
+        int positionsNum = body.getMaxLength();
+        int partCount = body.getPartCount();
+        int partNumber = body.getPartNumber();
+        byte[] hexBinary = DatatypeConverter.parseHexBinary(body.getHash());
 
 
         MessageDigest md5 = null;
@@ -39,23 +39,19 @@ public class WorkerService {
             e.printStackTrace();
         }
 
-        ICombinatoricsVector<String> vector = CombinatoricsFactory.createVector(ALPHABET.split(""));
+        ICombinatoricsVector<String> vector = CombinatoricsFactory.createVector(alphabet.split(""));
 
-        Generator<String> gen = CombinatoricsFactory.createPermutationWithRepetitionGenerator(vector, POSITIONS_NUM);
+        Generator<String> gen = CombinatoricsFactory.createPermutationWithRepetitionGenerator(vector, positionsNum);
 
         int idx = 0;
-        System.out.println("Start count permutations...");
+        System.out.println("Start");
         Instant startTime = Instant.now();
         for (ICombinatoricsVector<String> perm : gen) {
-            if (idx % ALL_PARTS_NUM == MY_PART_IDX) {
-                // get hash of string check if equals our hash
-
+            if (idx % partCount == partNumber) {
                 String str = String.join("", perm.getVector());
-                // System.out.println("Combination: " + str);
                 byte[] combHash = md5.digest(str.toString().getBytes());
-                if (Arrays.equals(combHash, HASH)) {
-                    System.out.println("I found hash: " + str.toString());
-
+                if (Arrays.equals(combHash, hexBinary)) {
+                    System.out.println("hash: " + str.toString());
                     sendAnswer(body.getRequestId(), str);
                 }
             }
@@ -69,7 +65,7 @@ public class WorkerService {
             idx++;
 
         }
-        System.out.println("End count permutations...");
+        System.out.println("End");
 
     }
 

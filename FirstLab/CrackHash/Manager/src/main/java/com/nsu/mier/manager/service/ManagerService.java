@@ -17,30 +17,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ManagerService {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ConcurrentHashMap<RequestId, TaskStatus> idAndStatus;
-    private static final String LETTERS_AND_DIGITS = "abcdefghijklmnopqrstuvwxyz0123456789";
+    private final ConcurrentHashMap<RequestId, TaskStatus> UserRequestStatus = new ConcurrentHashMap<>();
+    private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
     private final Duration taskTimeout = Duration.parse("PT5M");
-
-    public ManagerService() {
-        this.idAndStatus = new ConcurrentHashMap<>();
-    }
-
-    private CrackHashManagerRequest.Alphabet initAlphabet() {
-        CrackHashManagerRequest.Alphabet alphabet = new CrackHashManagerRequest.Alphabet();
-
-        for (String charString : LETTERS_AND_DIGITS.split("")) {
-            alphabet.getSymbols().add(charString);
-        }
-
-        return alphabet;
-    }
 
     public RequestId getRequestId(HashAndLength body) {
 
-        String address = "balancer";
+        String address = "crackhash-worker-";
+
+        CrackHashManagerRequest.Alphabet alphabet = new CrackHashManagerRequest.Alphabet();
+
+        for (String charString : ALPHABET.split("")) {
+            alphabet.getSymbols().add(charString);
+        }
 
         RequestId requestId = new RequestId(UUID.randomUUID().toString());
-        idAndStatus.put(requestId, new TaskStatus());
+        UserRequestStatus.put(requestId, new TaskStatus());
 
 
         CrackHashManagerRequest request = new CrackHashManagerRequest();
@@ -48,22 +40,26 @@ public class ManagerService {
         request.setRequestId(requestId.getRequestId());
         request.setHash(body.getHash());
         request.setMaxLength(body.getMaxLength());
-        request.setAlphabet(initAlphabet());
+        request.setAlphabet(alphabet);
 
         int partCount = Integer.parseInt(System.getenv("COUNT_OF_WORKERS"));
+        //int partCount = 1;
         request.setPartCount(partCount);
 
         for (int part = 0; part < partCount; part++) {
-            String workerUrl = "http://" + address + ":8082";
+            String workerUrl = "http://" + address + (part + 1) + ":8081";
             request.setPartNumber(part);
+
             restTemplate.postForObject(workerUrl + "/internal/api/worker/hash/crack/task", request, Void.class);
+            //restTemplate.postForObject("https://webhook.site/acda3c21-c956-49c6-a422-aebfccaae6e1", request, Void.class);
+            //restTemplate.postForObject("http://127.0.0.1:8081/internal/api/worker/hash/crack/task", request, Void.class);
         }
 
         return requestId;
     }
 
     public TaskStatus getTaskStatus(RequestId id) {
-        TaskStatus status = idAndStatus.get(id);
+        TaskStatus status = UserRequestStatus.get(id);
         System.out.println(status.toString());
 
         Duration dur = Duration.between(status.getStartTime(), Instant.now());
@@ -79,7 +75,7 @@ public class ManagerService {
             return;
         }
 
-        TaskStatus status = idAndStatus.get(new RequestId(response.getRequestId()));
+        TaskStatus status = UserRequestStatus.get(new RequestId(response.getRequestId()));
         if (status == null) {
             return;
         }
