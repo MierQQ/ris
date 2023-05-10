@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+
+  worker:
+    build:
+      context: ./Worker
+      dockerfile: ./Dockerfile
+    deploy:
+      replicas: 4
+
+  balancer:
+    container_name: balancer
+    build:
+      context: ./ngix
+      dockerfile: ./Dockerfile
+      args:
+        SERVICE: worker
+    
+  manager:
+    container_name: manager
+    build:
+      context: ./Manager
+      dockerfile: ./Dockerfile
+      args:
+        NUM: 4
+    ports:
+      - "8080:8080"
