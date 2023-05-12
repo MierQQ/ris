@@ -6,7 +6,7 @@ services:
       context: ./Worker
       dockerfile: ./Dockerfile
     deploy:
-      replicas: 1
+      replicas: 4
     
   manager:
     container_name: manager
@@ -14,6 +14,7 @@ services:
       context: ./Manager
       dockerfile: ./Dockerfile
       args:
-        NUM: 1
+        NUM: 4
     ports:
-      - "8080:8080"
+    - "8080:8080"
+
